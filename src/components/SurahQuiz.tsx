@@ -14,28 +14,21 @@ const SurahQuiz: React.FC = () => {
   const [ayah, setAyah] = useState<any>(null);
 
   const handleSurahChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedSurah(event.target.value);
-    const ayahData = await getRandomAyah(event.target.value);
-    setAyah((prevAyah: any) => ({ ...prevAyah, ...ayahData }));
+    const surahNumber = event.target.value;
+    setSelectedSurah(surahNumber);
+    await fetchNewAyah(surahNumber);
   };
 
-  const getRandomAyah = async (selectedSurah: string) => {
-    console.log(selectedSurah)
-
-      try {
-        const surahData = await fetchSurah(selectedSurah);
-        const surahAyahs = surahData.ayahs || [];
-        const randomIndex = Math.floor(Math.random() * surahData.numberOfAyahs);
-        return surahAyahs[randomIndex];
-      } catch (error) {
-        console.error('Error fetching surah:', error);
-        return null;
-      }
+  const fetchNewAyah = async (surahNumber: string) => {
+    try {
+      const surahData = await fetchSurah(surahNumber);
+      const surahAyahs = surahData.ayahs || [];
+      const randomIndex = Math.floor(Math.random() * surahData.numberOfAyahs);
+      setAyah(surahAyahs[randomIndex]);
+    } catch (error) {
+      console.error('Error fetching surah:', error);
+    }
   };
-
-  useEffect(() => { 
-    console.log({ayah})
-  }, [ayah])
 
   useEffect(() => {
     const loadSurahs = async () => {
@@ -63,6 +56,7 @@ const SurahQuiz: React.FC = () => {
           <div>
             <p>{maskWordInAyah(ayah?.text)}</p>
             <p>What is the correct word?</p>
+            <button onClick={() => fetchNewAyah(selectedSurah)}>Next Question</button>
           </div>
         )}
       </div>
