@@ -8,6 +8,7 @@ const Quiz: React.FC = () => {
   const mode = queryParams.get('mode') as 'surah' | 'whole';
   const [surahs, setSurahs] = useState<any[]>([]);
   const [ayah, setAyah] = useState<any>(null);
+  console.log(ayah)
   const [selectedSurah, setSelectedSurah] = useState<string>('');
 
   const handleSurahChange = (event: React.ChangeEvent<HTMLSelectElement>) => {

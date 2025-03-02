@@ -10,7 +10,11 @@ const ModeSelection: React.FC = () => {
   };
 
   const startQuiz = () => {
-    navigate(`/quiz?mode=${mode}`);
+    if (mode === 'surah') {
+      navigate('/quiz/surah');
+    } else if (mode === 'whole') {
+      navigate('/quiz/whole');
+    }
   };
 
   return (

@@ -12,6 +12,16 @@ export const fetchSurahs = async () => {
   }
 };
 
+export const fetchSurah = async (surahNumber: string) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/surah/${surahNumber}`);
+    return response.data.data;
+  } catch (error) {
+    console.error('Error fetching surah:', error);
+    throw error;
+  }
+};
+
 export const fetchAyah = async (ayahNumber: string, edition: string = 'quran-uthmani') => {
   try {
     const response = await axios.get(`${API_BASE_URL}/ayah/${ayahNumber}/${edition}`);
