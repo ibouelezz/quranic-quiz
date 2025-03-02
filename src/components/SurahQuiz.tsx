@@ -1,17 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { fetchSurah, fetchSurahs } from '../apiService';
-
-const maskWordInAyah = (text: string): string => {
-  const words = text.split(' ');
-  const randomIndex = Math.floor(Math.random() * words.length);
-  words[randomIndex] = '____';
-  return words.join(' ');
-};
+import { maskWordInAyah, removeDiacritics } from '../utils/helpers';
 
 const SurahQuiz: React.FC = () => {
   const [surahs, setSurahs] = useState<any[]>([]);
   const [selectedSurah, setSelectedSurah] = useState<string>('');
   const [ayah, setAyah] = useState<any>(null);
+  const [maskedWord, setMaskedWord] = useState<string>('');
+  const [userInput, setUserInput] = useState<string>('');
+  const [feedback, setFeedback] = useState<string>('');
 
   const handleSurahChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
     const surahNumber = event.target.value;
@@ -24,9 +21,27 @@ const SurahQuiz: React.FC = () => {
       const surahData = await fetchSurah(surahNumber);
       const surahAyahs = surahData.ayahs || [];
       const randomIndex = Math.floor(Math.random() * surahData.numberOfAyahs);
-      setAyah(surahAyahs[randomIndex]);
+      const selectedAyah = surahAyahs[randomIndex];
+      const { maskedText, maskedWord } = maskWordInAyah(selectedAyah.text);
+      setAyah({ ...selectedAyah, text: maskedText });
+      setMaskedWord(maskedWord);
+      setFeedback('');
+      setUserInput('');
     } catch (error) {
       console.error('Error fetching surah:', error);
+    }
+  };
+
+  const handleSubmit = () => {
+    const normalizedInput = removeDiacritics(userInput.trim().toLowerCase());
+    const normalizedMaskedWord = removeDiacritics(maskedWord.trim().toLowerCase());
+
+    console.log(`"${normalizedInput}"`, `"${normalizedMaskedWord}"`);
+
+    if (normalizedInput === normalizedMaskedWord) {
+      setFeedback('Correct!');
+    } else {
+      setFeedback(`Incorrect. The correct word was "${maskedWord}".`);
     }
   };
 
@@ -54,9 +69,16 @@ const SurahQuiz: React.FC = () => {
         <h2>Quiz</h2>
         {ayah && (
           <div>
-            <p>{maskWordInAyah(ayah?.text)}</p>
-            <p>What is the correct word?</p>
+            <p>{ayah.text}</p>
+            <input
+              type="text"
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              placeholder="Type the masked word"
+            />
+            <button onClick={handleSubmit}>Submit</button>
             <button onClick={() => fetchNewAyah(selectedSurah)}>Next Question</button>
+            <p>{feedback}</p>
           </div>
         )}
       </div>
