@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { fetchSurah, fetchSurahs } from '../apiService';
-import { maskWordInAyah, removeDiacritics } from '../utils/helpers';
+import { maskWordInAyah, isWordMatch } from '../utils/helpers';
 
 const SurahQuiz: React.FC = () => {
     const [surahs, setSurahs] = useState<any[]>([]);
     const [selectedSurah, setSelectedSurah] = useState<string>('');
     const [ayah, setAyah] = useState<any>(null);
     const [maskedWord, setMaskedWord] = useState<string>('');
+    const [maskedWordVariations, setMaskedWordVariations] = useState<string[]>([]);
     const [userInput, setUserInput] = useState<string>('');
     const [feedback, setFeedback] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
@@ -24,7 +25,7 @@ const SurahQuiz: React.FC = () => {
         setLoading(true);
         setError('');
         try {
-            const surahData = await fetchSurah(surahNumber);
+            const surahData = await fetchSurah(surahNumber).then((data) => data[0]);
             const surahAyahs = surahData.ayahs || [];
 
             if (surahAyahs.length === 0) {
@@ -35,9 +36,10 @@ const SurahQuiz: React.FC = () => {
 
             const randomIndex = Math.floor(Math.random() * surahData.numberOfAyahs);
             const selectedAyah = surahAyahs[randomIndex];
-            const { maskedText, maskedWord } = maskWordInAyah(selectedAyah.text);
+            const { maskedText, maskedWord, maskedWordVariations } = maskWordInAyah(selectedAyah.text);
             setAyah({ ...selectedAyah, text: maskedText });
             setMaskedWord(maskedWord);
+            setMaskedWordVariations(maskedWordVariations);
             setFeedback('');
             setUserInput('');
         } catch (error) {
@@ -50,10 +52,12 @@ const SurahQuiz: React.FC = () => {
     };
 
     const handleSubmit = () => {
-        const normalizedInput = removeDiacritics(userInput.trim().toLowerCase());
-        const normalizedMaskedWord = removeDiacritics(maskedWord.trim().toLowerCase());
+        if (!userInput.trim()) {
+            setFeedback('Please enter a word.');
+            return;
+        }
 
-        if (normalizedInput === normalizedMaskedWord) {
+        if (isWordMatch(userInput, maskedWord)) {
             setFeedback('Correct!');
         } else {
             setFeedback(`Incorrect. The correct word was "${maskedWord}".`);
@@ -106,7 +110,7 @@ const SurahQuiz: React.FC = () => {
                 {error && <p className="error-message">{error}</p>}
                 {!loading && !error && ayah && (
                     <div className="quiz-question">
-                        <p className="ayah-text">{ayah.text}</p>
+                        <p className="ayah-text" dangerouslySetInnerHTML={{ __html: ayah.text }}></p>
                         <div className="input-group">
                             <input
                                 type="text"

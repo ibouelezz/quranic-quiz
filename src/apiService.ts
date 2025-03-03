@@ -24,7 +24,7 @@ export const fetchSurahs = async () => {
 
 export const fetchSurah = async (surahNumber: string) => {
     try {
-        const response = await axios.get(`${API_BASE_URL}/surah/${surahNumber}`);
+        const response = await axios.get(`${API_BASE_URL}/surah/${surahNumber}/editions/simple-minimal`);
         return response.data.data;
     } catch (error) {
         console.error('Error fetching surah:', error);
@@ -32,7 +32,7 @@ export const fetchSurah = async (surahNumber: string) => {
     }
 };
 
-export const fetchAyah = async (ayahNumber: string, edition: string = 'quran-uthmani') => {
+export const fetchAyah = async (ayahNumber: string, edition: string = 'simple-minimal') => {
     try {
         const response = await axios.get(`${API_BASE_URL}/ayah/${ayahNumber}/${edition}`);
         return response.data.data;
@@ -44,7 +44,7 @@ export const fetchAyah = async (ayahNumber: string, edition: string = 'quran-uth
 
 export const fetchJuz = async (juzNumber: string) => {
     try {
-        const response = await axios.get(`${API_BASE_URL}/juz/${juzNumber}/quran-uthmani`);
+        const response = await axios.get(`${API_BASE_URL}/juz/${juzNumber}/simple-minimal`);
         return response.data.data;
     } catch (error) {
         console.error('Error fetching Juz:', error);

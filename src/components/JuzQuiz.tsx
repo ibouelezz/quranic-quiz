@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { fetchJuz } from '../apiService';
-import { maskWordInAyah, removeDiacritics } from '../utils/helpers';
+import { maskWordInAyah, isWordMatch } from '../utils/helpers';
 
 const JuzQuiz: React.FC = () => {
     const [juzNumber, setJuzNumber] = useState<string>('1');
     const [ayah, setAyah] = useState<any>(null);
     const [maskedWord, setMaskedWord] = useState<string>('');
+    const [maskedWordVariations, setMaskedWordVariations] = useState<string[]>([]);
     const [userInput, setUserInput] = useState<string>('');
     const [feedback, setFeedback] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
@@ -32,9 +33,10 @@ const JuzQuiz: React.FC = () => {
 
             const randomIndex = Math.floor(Math.random() * juzAyahs.length);
             const selectedAyah = juzAyahs[randomIndex];
-            const { maskedText, maskedWord } = maskWordInAyah(selectedAyah.text);
+            const { maskedText, maskedWord, maskedWordVariations } = maskWordInAyah(selectedAyah.text);
             setAyah({ ...selectedAyah, text: maskedText });
             setMaskedWord(maskedWord);
+            setMaskedWordVariations(maskedWordVariations);
             setFeedback('');
             setUserInput('');
         } catch (error) {
@@ -47,10 +49,12 @@ const JuzQuiz: React.FC = () => {
     };
 
     const handleSubmit = () => {
-        const normalizedInput = removeDiacritics(userInput.trim().toLowerCase());
-        const normalizedMaskedWord = removeDiacritics(maskedWord.trim().toLowerCase());
+        if (!userInput.trim()) {
+            setFeedback('Please enter a word.');
+            return;
+        }
 
-        if (normalizedInput === normalizedMaskedWord) {
+        if (isWordMatch(userInput, maskedWord)) {
             setFeedback('Correct!');
         } else {
             setFeedback(`Incorrect. The correct word was "${maskedWord}".`);
@@ -84,7 +88,7 @@ const JuzQuiz: React.FC = () => {
                 {error && <p className="error-message">{error}</p>}
                 {!loading && !error && ayah && (
                     <div className="quiz-question">
-                        <p className="ayah-text">{ayah.text}</p>
+                        <p className="ayah-text" dangerouslySetInnerHTML={{ __html: ayah.text }}></p>
                         <div className="input-group">
                             <input
                                 type="text"

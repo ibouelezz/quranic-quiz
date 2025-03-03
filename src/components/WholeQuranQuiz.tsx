@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fetchWholeQuran } from '../apiService';
+import { isSurahNameMatch } from '../utils/helpers';
 
 const WholeQuranQuiz: React.FC = () => {
     const [surahs, setSurahs] = useState<any[]>([]);
@@ -16,6 +17,7 @@ const WholeQuranQuiz: React.FC = () => {
                 surahName: surah.englishName,
                 surahNameTranslation: surah.englishNameTranslation,
                 name: surah.name,
+                number: surah.number,
             }))
         );
         const randomIndex = Math.floor(Math.random() * allAyahs.length);
@@ -56,13 +58,25 @@ const WholeQuranQuiz: React.FC = () => {
 
     const handleGuessSubmit = (event: React.FormEvent) => {
         event.preventDefault();
+
+        if (!userGuess.trim()) {
+            setFeedback('Please enter a surah name.');
+            return;
+        }
+
         if (ayah) {
             const possibleNames = [
-                ayah.surahName.toLowerCase(), // English name
-                ayah.surahNameTranslation.toLowerCase(), // English translation
+                ayah.surahName, // English name
+                ayah.surahNameTranslation, // English translation
                 ayah.name, // Arabic name
+                `Surah ${ayah.surahName}`,
+                `Surat ${ayah.surahName}`,
+                `سورة ${ayah.name}`,
+                ayah.number.toString(), // Surah number
+                `${ayah.number}`, // Surah number as string
             ];
-            if (possibleNames.includes(userGuess.toLowerCase())) {
+
+            if (isSurahNameMatch(userGuess, possibleNames)) {
                 setFeedback('Correct!');
             } else {
                 setFeedback(`Incorrect. The correct answer is ${ayah.surahName} (${ayah.name}).`);
