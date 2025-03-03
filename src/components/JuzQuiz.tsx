@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { fetchSurah, fetchSurahs } from '../apiService';
+import { fetchJuz } from '../apiService';
 import { maskWordInAyah, removeDiacritics } from '../utils/helpers';
 
-const SurahQuiz: React.FC = () => {
-    const [surahs, setSurahs] = useState<any[]>([]);
-    const [selectedSurah, setSelectedSurah] = useState<string>('');
+const JuzQuiz: React.FC = () => {
+    const [juzNumber, setJuzNumber] = useState<string>('1');
     const [ayah, setAyah] = useState<any>(null);
     const [maskedWord, setMaskedWord] = useState<string>('');
     const [userInput, setUserInput] = useState<string>('');
@@ -12,36 +11,34 @@ const SurahQuiz: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string>('');
 
-    const handleSurahChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
-        const surahNumber = event.target.value;
-        setSelectedSurah(surahNumber);
-        await fetchNewAyah(surahNumber);
+    const handleJuzChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
+        const selectedJuz = event.target.value;
+        setJuzNumber(selectedJuz);
+        await fetchNewAyah(selectedJuz);
     };
 
-    const fetchNewAyah = async (surahNumber: string) => {
-        if (!surahNumber) return;
-
+    const fetchNewAyah = async (juzNumber: string) => {
         setLoading(true);
         setError('');
         try {
-            const surahData = await fetchSurah(surahNumber);
-            const surahAyahs = surahData.ayahs || [];
+            const juzData = await fetchJuz(juzNumber);
+            const juzAyahs = juzData.ayahs || [];
 
-            if (surahAyahs.length === 0) {
-                setError('No ayahs found in this surah');
+            if (juzAyahs.length === 0) {
+                setError('No ayahs found in this juz');
                 setAyah(null);
                 return;
             }
 
-            const randomIndex = Math.floor(Math.random() * surahData.numberOfAyahs);
-            const selectedAyah = surahAyahs[randomIndex];
+            const randomIndex = Math.floor(Math.random() * juzAyahs.length);
+            const selectedAyah = juzAyahs[randomIndex];
             const { maskedText, maskedWord } = maskWordInAyah(selectedAyah.text);
             setAyah({ ...selectedAyah, text: maskedText });
             setMaskedWord(maskedWord);
             setFeedback('');
             setUserInput('');
         } catch (error) {
-            console.error('Error fetching surah:', error);
+            console.error('Error fetching Juz:', error);
             setError('Failed to fetch ayahs. Please try again.');
             setAyah(null);
         } finally {
@@ -67,36 +64,17 @@ const SurahQuiz: React.FC = () => {
     };
 
     useEffect(() => {
-        const loadSurahs = async () => {
-            setLoading(true);
-            try {
-                const surahData = await fetchSurahs();
-                setSurahs(surahData);
-                if (surahData.length > 0) {
-                    setSelectedSurah(surahData[0].number.toString());
-                    await fetchNewAyah(surahData[0].number.toString());
-                }
-            } catch (error) {
-                console.error('Error loading surahs:', error);
-                setError('Failed to load surahs. Please refresh the page.');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        loadSurahs();
+        fetchNewAyah(juzNumber);
     }, []);
 
     return (
         <div className="quiz-container">
-            <h1>Surah Quiz</h1>
+            <h1>Juz' Quiz</h1>
             <div className="quiz-controls">
-                <label htmlFor="surah">Select Surah:</label>
-                <select id="surah" value={selectedSurah} onChange={handleSurahChange}>
-                    {surahs.map((surah) => (
-                        <option key={surah.name} value={surah.number}>
-                            {surah.name}
-                        </option>
+                <label htmlFor="juz">Select Juz':</label>
+                <select id="juz" value={juzNumber} onChange={handleJuzChange}>
+                    {Array.from({ length: 30 }, (_, i) => (
+                        <option key={i + 1} value={i + 1}>{`Juz' ${i + 1}`}</option>
                     ))}
                 </select>
             </div>
@@ -119,7 +97,7 @@ const SurahQuiz: React.FC = () => {
                             <button onClick={handleSubmit} className="submit-btn">
                                 Submit
                             </button>
-                            <button onClick={() => fetchNewAyah(selectedSurah)} className="next-btn">
+                            <button onClick={() => fetchNewAyah(juzNumber)} className="next-btn">
                                 Next Question
                             </button>
                         </div>
@@ -135,4 +113,4 @@ const SurahQuiz: React.FC = () => {
     );
 };
 
-export default SurahQuiz;
+export default JuzQuiz;
