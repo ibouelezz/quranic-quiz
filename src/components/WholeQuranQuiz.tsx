@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { fetchWholeQuran } from '../apiService';
 import { isSurahNameMatch } from '../utils/helpers';
+import { useNavigate } from 'react-router-dom';
+import ScoreCounter from './ScoreCounter';
 
 const WholeQuranQuiz: React.FC = () => {
     const [surahs, setSurahs] = useState<any[]>([]);
@@ -9,6 +11,10 @@ const WholeQuranQuiz: React.FC = () => {
     const [feedback, setFeedback] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string>('');
+    const [score, setScore] = useState<number>(0);
+    const [totalAttempts, setTotalAttempts] = useState<number>(0);
+    const [answered, setAnswered] = useState<boolean>(false);
+    const navigate = useNavigate();
 
     const getRandomAyah = () => {
         const allAyahs = surahs.flatMap((surah) =>
@@ -54,6 +60,7 @@ const WholeQuranQuiz: React.FC = () => {
         setAyah(ayahData);
         setUserGuess('');
         setFeedback('');
+        setAnswered(false);
     };
 
     const handleGuessSubmit = (event: React.FormEvent) => {
@@ -63,6 +70,13 @@ const WholeQuranQuiz: React.FC = () => {
             setFeedback('Please enter a surah name.');
             return;
         }
+
+        if (answered) {
+            return;
+        }
+
+        setAnswered(true);
+        setTotalAttempts((prev) => prev + 1);
 
         if (ayah) {
             const possibleNames = [
@@ -78,6 +92,7 @@ const WholeQuranQuiz: React.FC = () => {
 
             if (isSurahNameMatch(userGuess, possibleNames)) {
                 setFeedback('Correct!');
+                setScore((prev) => prev + 1);
             } else {
                 setFeedback(`Incorrect. The correct answer is ${ayah.surahName} (${ayah.name}).`);
             }
@@ -91,37 +106,57 @@ const WholeQuranQuiz: React.FC = () => {
         }
     };
 
+    const goToHome = () => {
+        navigate('/');
+    };
+
     return (
-        <div className="quiz-container">
-            <h1>Whole Quran Quiz</h1>
-            <div className="quiz-content">
-                <h2>Quiz</h2>
-                {loading && <p>Loading...</p>}
-                {error && <p className="error-message">{error}</p>}
+        <div className="max-w-4xl mx-auto p-5 font-sans">
+            <h1 className="text-3xl font-bold text-dark mb-6 text-center">Whole Quran Quiz</h1>
+            <ScoreCounter score={score} total={totalAttempts} />
+            <div className="bg-background p-6 rounded-xl shadow-card">
+                <h2 className="text-2xl font-bold text-primary mb-4 text-center">Quiz</h2>
+                {loading && <p className="text-center">Loading...</p>}
+                {error && <p className="text-error text-center font-bold">{error}</p>}
                 {!loading && !error && ayah && (
-                    <div className="quiz-question">
-                        <p className="ayah-text">{ayah.text}</p>
+                    <div className="flex flex-col gap-5">
+                        <p className="font-arabic text-2xl leading-relaxed text-right rtl p-5 bg-white rounded-lg shadow mb-5">
+                            {ayah.text}
+                        </p>
                         <form onSubmit={handleGuessSubmit}>
-                            <p>What is the name of the surah?</p>
-                            <div className="input-group">
+                            <p className="text-center mb-4">What is the name of the surah?</p>
+                            <div className="flex flex-wrap gap-3 justify-center my-4 md:flex-row flex-col">
                                 <input
                                     type="text"
                                     value={userGuess}
                                     onChange={(e) => setUserGuess(e.target.value)}
                                     onKeyDown={handleKeyDown}
                                     placeholder="Enter surah name"
-                                    className="word-input"
+                                    className="font-arabic p-3 rounded border border-gray-300 text-lg flex-grow max-w-xs md:max-w-full md:mb-0 mb-3"
                                 />
-                                <button type="submit" className="submit-btn">
+                                <button
+                                    type="submit"
+                                    className="bg-primary text-white py-3 px-6 rounded-full font-bold shadow-button transition-all hover:bg-blue-600 hover:shadow-button-hover hover:-translate-y-0.5 md:w-auto w-full md:mb-0 mb-3"
+                                >
                                     Submit
                                 </button>
-                                <button type="button" onClick={handleNextQuestion} className="next-btn">
-                                    Next
+                                <button
+                                    type="button"
+                                    onClick={handleNextQuestion}
+                                    className="bg-secondary text-white py-3 px-6 rounded-full font-bold shadow transition-all hover:bg-green-600 hover:shadow-lg hover:-translate-y-0.5 md:w-auto w-full"
+                                >
+                                    Next Question
                                 </button>
                             </div>
                         </form>
                         {feedback && (
-                            <p className={feedback.startsWith('Correct') ? 'feedback-correct' : 'feedback-incorrect'}>
+                            <p
+                                className={
+                                    feedback.startsWith('Correct')
+                                        ? 'text-success font-bold text-center'
+                                        : 'text-error font-bold text-center'
+                                }
+                            >
                                 {feedback}
                             </p>
                         )}

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { fetchSurah, fetchSurahs } from '../apiService';
 import { maskWordInAyah, isWordMatch } from '../utils/helpers';
+import { useNavigate } from 'react-router-dom';
+import ScoreCounter from './ScoreCounter';
 
 const SurahQuiz: React.FC = () => {
     const [surahs, setSurahs] = useState<any[]>([]);
@@ -12,6 +14,10 @@ const SurahQuiz: React.FC = () => {
     const [feedback, setFeedback] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string>('');
+    const [score, setScore] = useState<number>(0);
+    const [totalAttempts, setTotalAttempts] = useState<number>(0);
+    const [answered, setAnswered] = useState<boolean>(false);
+    const navigate = useNavigate();
 
     const handleSurahChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
         const surahNumber = event.target.value;
@@ -24,6 +30,7 @@ const SurahQuiz: React.FC = () => {
 
         setLoading(true);
         setError('');
+        setAnswered(false);
         try {
             const surahData = await fetchSurah(surahNumber).then((data) => data[0]);
             const surahAyahs = surahData.ayahs || [];
@@ -57,8 +64,16 @@ const SurahQuiz: React.FC = () => {
             return;
         }
 
+        if (answered) {
+            return;
+        }
+
+        setAnswered(true);
+        setTotalAttempts((prev) => prev + 1);
+
         if (isWordMatch(userInput, maskedWord)) {
             setFeedback('Correct!');
+            setScore((prev) => prev + 1);
         } else {
             setFeedback(`Incorrect. The correct word was "${maskedWord}".`);
         }
@@ -68,6 +83,10 @@ const SurahQuiz: React.FC = () => {
         if (event.key === 'Enter') {
             handleSubmit();
         }
+    };
+
+    const goToHome = () => {
+        navigate('/');
     };
 
     useEffect(() => {
@@ -92,11 +111,17 @@ const SurahQuiz: React.FC = () => {
     }, []);
 
     return (
-        <div className="quiz-container">
-            <h1>Surah Quiz</h1>
-            <div className="quiz-controls">
+        <div className="max-w-4xl mx-auto p-5 font-sans">
+            <h1 className="text-3xl font-bold text-dark mb-6 text-center">Surah Quiz</h1>
+            <ScoreCounter score={score} total={totalAttempts} />
+            <div className="mb-6 flex items-center justify-center gap-3">
                 <label htmlFor="surah">Select Surah:</label>
-                <select id="surah" value={selectedSurah} onChange={handleSurahChange}>
+                <select
+                    id="surah"
+                    value={selectedSurah}
+                    onChange={handleSurahChange}
+                    className="p-2 rounded border border-gray-300 text-base min-w-[150px]"
+                >
                     {surahs.map((surah) => (
                         <option key={surah.name} value={surah.number}>
                             {surah.name}
@@ -104,31 +129,46 @@ const SurahQuiz: React.FC = () => {
                     ))}
                 </select>
             </div>
-            <div className="quiz-content">
-                <h2>Quiz</h2>
-                {loading && <p>Loading...</p>}
-                {error && <p className="error-message">{error}</p>}
+            <div className="bg-background p-6 rounded-xl shadow-card">
+                <h2 className="text-2xl font-bold text-primary mb-4 text-center">Quiz</h2>
+                {loading && <p className="text-center">Loading...</p>}
+                {error && <p className="text-error text-center font-bold">{error}</p>}
                 {!loading && !error && ayah && (
-                    <div className="quiz-question">
-                        <p className="ayah-text" dangerouslySetInnerHTML={{ __html: ayah.text }}></p>
-                        <div className="input-group">
+                    <div className="flex flex-col gap-5">
+                        <p
+                            className="font-arabic text-2xl leading-relaxed text-right rtl p-5 bg-white rounded-lg shadow mb-5"
+                            dangerouslySetInnerHTML={{ __html: ayah.text }}
+                        ></p>
+                        <div className="flex flex-wrap gap-3 justify-center my-4">
                             <input
                                 type="text"
                                 value={userInput}
                                 onChange={(e) => setUserInput(e.target.value)}
                                 onKeyDown={handleKeyDown}
                                 placeholder="Type the masked word"
-                                className="word-input"
+                                className="font-arabic p-3 rounded border border-gray-300 text-lg flex-grow max-w-xs"
                             />
-                            <button onClick={handleSubmit} className="submit-btn">
+                            <button
+                                onClick={handleSubmit}
+                                className="bg-primary text-white py-3 px-6 rounded-full font-bold shadow-button transition-all hover:bg-blue-600 hover:shadow-button-hover hover:-translate-y-0.5"
+                            >
                                 Submit
                             </button>
-                            <button onClick={() => fetchNewAyah(selectedSurah)} className="next-btn">
+                            <button
+                                onClick={() => fetchNewAyah(selectedSurah)}
+                                className="bg-secondary text-white py-3 px-6 rounded-full font-bold shadow transition-all hover:bg-green-600 hover:shadow-lg hover:-translate-y-0.5"
+                            >
                                 Next Question
                             </button>
                         </div>
                         {feedback && (
-                            <p className={feedback.startsWith('Correct') ? 'feedback-correct' : 'feedback-incorrect'}>
+                            <p
+                                className={
+                                    feedback.startsWith('Correct')
+                                        ? 'text-success font-bold text-center'
+                                        : 'text-error font-bold text-center'
+                                }
+                            >
                                 {feedback}
                             </p>
                         )}
