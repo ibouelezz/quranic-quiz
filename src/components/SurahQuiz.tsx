@@ -46,14 +46,13 @@ const SurahQuiz: React.FC = () => {
         loadSurahs();
     }, []);
 
+    // Auto-submit when input length matches masked word length
     useEffect(() => {
-        if (userInput.length <= maskedWordLength) {
-            // Auto-check answer if the input length matches the masked word length
-            if (userInput.length === maskedWordLength && !answered) {
-                setTimeout(() => checkAnswer(), 300);
-            }
+        if (userInput.length === maskedWordLength && !answered) {
+            // Small delay to allow the user to see what they typed
+            setTimeout(() => checkAnswer(), 400);
         }
-    }, [userInput]);
+    }, [userInput, maskedWordLength, answered]);
 
     // Handle surah selection change
     const handleSurahChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -149,22 +148,32 @@ const SurahQuiz: React.FC = () => {
 
     // Inline rendering of masked word
     const renderMaskedInline = () => {
+        // Calculate exact width based on the masked word length
+        const inputStyle: React.CSSProperties = {
+            width: `${maskedWordLength}ch`,
+            direction: 'rtl' as 'rtl',
+        };
+
         if (!answered) {
             return (
-                <input
-                    type="text"
-                    value={userInput}
-                    onChange={(e) => setUserInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    className={`font-arabic text-2xl bg-transparent text-primary font-bold text-right placeholder:text-2xl outline-none`}
-                    style={{ width: `${maskedWordLength * 1}ch` }}
-                    placeholder={''.padEnd(maskedWordLength, '_')}
-                    // maxLength={maskedWordLength}
-                    autoComplete="off"
-                    autoCapitalize="off"
-                    spellCheck="false"
-                    autoFocus
-                />
+                <div className="inline-flex relative">
+                    <input
+                        type="text"
+                        value={userInput}
+                        onChange={(e) => setUserInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        className={`font-arabic text-2xl bg-transparent text-primary font-bold text-right outline-none ${
+                            !userInput && 'animate-blink'
+                        }`}
+                        style={inputStyle}
+                        placeholder={''.padEnd(maskedWordLength, '_')}
+                        maxLength={maskedWordLength}
+                        autoComplete="off"
+                        autoCapitalize="off"
+                        spellCheck="false"
+                        autoFocus
+                    />
+                </div>
             );
         } else {
             return (

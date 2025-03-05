@@ -136,12 +136,6 @@ export function maskWordInAyah(text: string): {
 
     // Create a placeholder with individual character slots for typing
     const maskedWordLength = normalizedMaskedWord.length;
-    // console.log({
-    //     cleanMaskedWord,
-    //     normalizedMaskedWord,
-    //     maskedWordLength,
-    //     normalizedLength: normalizedMaskedWord.length,
-    // });
     const placeholder = `<span id="masked-word-container" class="masked"></span>`;
 
     words[originalIndex] = placeholder;
