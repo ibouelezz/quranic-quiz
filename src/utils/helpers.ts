@@ -4,11 +4,17 @@ export function removeDiacritics(text: string): string {
     // Normalize the text to decompose diacritics
     // This regex covers all Arabic diacritics including:
     // - Fatha, Kasra, Damma, Sukun, Shadda, etc.
+    // return text
+    //     .normalize('NFD')
+    //     .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, '') // Remove diacritics
+    //     .replace(/\s+/g, ' ') // Normalize whitespace
+    //     .trim(); // Remove leading/trailing whitespace
+    // Normalize the text to decompose diacritics and other marks
     return text
-        .normalize('NFD')
-        .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, '') // Remove diacritics
-        .replace(/\s+/g, ' ') // Normalize whitespace
-        .trim(); // Remove leading/trailing whitespace
+        .normalize('NFD') // Normalize to decomposed form for proper handling of diacritics
+        .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED\u200C\u200D\u0610-\u061A]/g, '') // Remove diacritics and non-spacing marks
+        .replace(/\s+/g, ' ') // Normalize multiple spaces to a single space
+        .trim(); // Remove leading and trailing whitespace
 }
 
 export function normalizeArabicText(text: string): string {
@@ -51,7 +57,6 @@ export function isWordMatch(userInput: string, targetWord: string): boolean {
 
     const userVariations = generateWordVariations(userInput);
     const targetVariations = generateWordVariations(targetWord);
-
     // Check if any variation of the user input matches any variation of the target word
     for (const userVar of userVariations) {
         for (const targetVar of targetVariations) {
@@ -100,6 +105,7 @@ export function maskWordInAyah(text: string): {
     maskedText: string;
     maskedWord: string;
     maskedWordVariations: string[];
+    maskedWordLength: number;
 } {
     // Normalize newlines and spaces
     const normalizedText = text.replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
@@ -120,17 +126,42 @@ export function maskWordInAyah(text: string): {
 
     // Clean the masked word from any punctuation at the beginning or end
     const cleanMaskedWord = maskedWord.replace(/^[.,;:!؟?()[\]{}""'']+|[.,;:!؟?()[\]{}""'']+$/g, '');
+    const normalizedMaskedWord = normalizeArabicText(cleanMaskedWord);
 
     // Generate variations of the masked word for matching
     const maskedWordVariations = generateWordVariations(cleanMaskedWord);
 
     // Find the index of this word in the original array
     const originalIndex = words.indexOf(maskedWord);
-    words[originalIndex] = '<span class="masked">____</span>';
+
+    // Create a placeholder with individual character slots for typing
+    const maskedWordLength = normalizedMaskedWord.length;
+    // console.log({
+    //     cleanMaskedWord,
+    //     normalizedMaskedWord,
+    //     maskedWordLength,
+    //     normalizedLength: normalizedMaskedWord.length,
+    // });
+    const placeholder = `<span id="masked-word-container" class="masked"></span>`;
+
+    words[originalIndex] = placeholder;
 
     return {
         maskedText: words.join(' '),
         maskedWord: cleanMaskedWord,
         maskedWordVariations,
+        maskedWordLength,
     };
+}
+
+export function playSound(type: 'correct' | 'incorrect'): void {
+    try {
+        const audio = new Audio(`/sounds/${type}.mp3`);
+        audio.volume = 0.5;
+        audio.play().catch((error) => {
+            console.error('Error playing sound:', error);
+        });
+    } catch (error) {
+        console.error('Error creating audio element:', error);
+    }
 }

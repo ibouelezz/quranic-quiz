@@ -8,10 +8,252 @@
     body {
         @apply font-sans bg-light;
     }
+    h1 {
+        @apply text-3xl font-bold text-dark mb-6 text-center;
+    }
+    h2 {
+        @apply text-2xl font-bold text-primary mb-4 text-center;
+    }
+    h3 {
+        @apply text-xl font-bold text-dark mb-2;
+    }
+    p {
+        @apply text-base text-dark mb-4;
+    }
+}
+
+@layer components {
+    .quiz-container {
+        @apply max-w-4xl mx-auto p-5 font-sans;
+    }
+
+    .quiz-content {
+        @apply bg-background p-6 rounded-xl shadow-card;
+    }
+
+    .quiz-controls {
+        @apply mb-6 flex items-center justify-center gap-3;
+    }
+
+    .quiz-controls select {
+        @apply p-2 rounded border border-gray-300 text-base min-w-[150px];
+    }
+
+    .quiz-question {
+        @apply flex flex-col gap-5;
+    }
+
+    .ayah-text {
+        @apply font-arabic text-2xl leading-relaxed text-right rtl p-5 bg-white rounded-lg shadow mb-5;
+    }
+
+    .input-group {
+        @apply flex flex-wrap gap-3 justify-center my-4;
+    }
+
+    .word-input {
+        @apply font-arabic p-3 rounded border border-gray-300 text-lg flex-grow max-w-xs;
+    }
+
+    .submit-btn {
+        @apply bg-primary text-white py-3 px-6 rounded-full font-bold shadow-button transition-all hover:bg-blue-600 hover:shadow-button-hover hover:-translate-y-0.5;
+    }
+
+    .next-btn {
+        @apply bg-secondary text-white py-3 px-6 rounded-full font-bold shadow transition-all hover:bg-green-600 hover:shadow-lg hover:-translate-y-0.5;
+    }
+
+    .back-btn {
+        @apply bg-gray-500 text-white py-3 px-6 rounded-full font-bold shadow transition-all hover:bg-gray-600 hover:shadow-lg hover:-translate-y-0.5;
+    }
+
+    .feedback-correct {
+        @apply text-success font-bold text-center;
+    }
+
+    .feedback-incorrect {
+        @apply text-error font-bold text-center;
+    }
+
+    .error-message {
+        @apply text-error text-center font-bold;
+    }
+
+    .mode-cards-container {
+        @apply grid grid-cols-1 md:grid-cols-3 gap-5 my-8;
+    }
+
+    .mode-card {
+        @apply bg-white rounded-xl shadow-card p-5 text-center cursor-pointer transition-all hover:-translate-y-1 hover:shadow-lg flex flex-col items-center justify-center h-full;
+    }
+
+    .mode-card-selected {
+        @apply border-3 border-primary -translate-y-1 shadow-lg;
+    }
+
+    .mode-card-icon {
+        @apply text-4xl mb-4;
+    }
+
+    .nav-bar {
+        @apply bg-white shadow p-3 flex justify-between items-center mb-5;
+    }
+
+    .nav-logo {
+        @apply text-xl font-bold text-primary no-underline flex items-center gap-3;
+    }
+
+    .nav-links {
+        @apply flex gap-5;
+    }
+
+    .nav-link {
+        @apply text-dark no-underline p-2 rounded transition-colors hover:bg-gray-100;
+    }
+
+    .nav-link.active {
+        @apply text-primary font-bold;
+    }
+
+    .floating-nav {
+        @apply fixed bottom-8 right-8 z-50;
+    }
+
+    .fab {
+        @apply w-16 h-16 rounded-full bg-primary text-white flex items-center justify-center text-2xl shadow-lg cursor-pointer transition-all hover:scale-110 hover:shadow-xl;
+    }
+
+    .fab-menu {
+        @apply absolute bottom-[70px] right-0 flex flex-col gap-3 opacity-0 invisible translate-y-5 transition-all;
+    }
+
+    .fab-menu.active {
+        @apply opacity-100 visible translate-y-0;
+    }
+
+    .fab-item {
+        @apply w-12 h-12 rounded-full bg-white text-primary flex items-center justify-center text-xl shadow cursor-pointer transition-all hover:scale-110 hover:shadow-lg relative;
+    }
+
+    .fab-tooltip {
+        @apply absolute right-[60px] bg-gray-800 text-white py-1 px-3 rounded text-sm whitespace-nowrap opacity-0 invisible transition-all;
+    }
+
+    .fab-item:hover .fab-tooltip {
+        @apply opacity-100 visible;
+    }
+
+    .score-counter {
+        @apply fixed top-20 right-5 bg-white rounded-full py-2 px-5 shadow-md flex items-center gap-3 z-10;
+    }
+
+    .score-counter span {
+        @apply font-bold text-primary;
+    }
+
+    .ayah-text span.masked {
+        @apply text-primary font-bold px-1 border-b-2 border-dashed border-primary;
+    }
 }
 
 @layer utilities {
     .rtl {
         direction: rtl;
     }
+
+    .border-3 {
+        border-width: 3px;
+    }
+}
+
+@media (max-width: 768px) {
+    .input-group {
+        @apply flex-col items-center;
+    }
+
+    .word-input {
+        @apply max-w-full mb-3;
+    }
+
+    button {
+        @apply w-full mb-3;
+    }
+
+    .nav-bar {
+        @apply flex-col gap-3;
+    }
+
+    .nav-links {
+        @apply w-full justify-center;
+    }
+}
+
+@keyframes popIn {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    70% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.animate-pop-in {
+    animation: popIn 0.3s ease-out forwards;
+}
+
+.animate-shake {
+    animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes shake {
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: translateX(-5px);
+    }
+    20%,
+    40%,
+    60%,
+    80% {
+        transform: translateX(5px);
+    }
+}
+
+.animate-pulse {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
+}
+
+@keyframes blink {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0;
+    }
+}
+
+.animate-blink {
+    animation: blink 3s ease-in-out infinite;
 }
