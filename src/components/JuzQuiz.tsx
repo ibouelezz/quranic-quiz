@@ -19,6 +19,7 @@ const JuzQuiz: React.FC = () => {
     const [answered, setAnswered] = useState<boolean>(false);
     const [isCorrect, setIsCorrect] = useState<boolean>(false);
     const [isShaking, setIsShaking] = useState<boolean>(false);
+    const [showConfetti, setShowConfetti] = useState<boolean>(false);
     const navigate = useNavigate();
     const ayahContainerRef = useRef<HTMLDivElement>(null);
 
@@ -43,6 +44,7 @@ const JuzQuiz: React.FC = () => {
         setUserInput('');
         setIsCorrect(false);
         setIsShaking(false);
+        setShowConfetti(false);
         try {
             const juzData = await fetchJuz(juzNumber);
             const juzAyahs = juzData.ayahs || [];
@@ -77,29 +79,48 @@ const JuzQuiz: React.FC = () => {
             return;
         }
 
+        // Immediately set answered state and check result
         setAnswered(true);
         setTotalAttempts((prev) => prev + 1);
 
         const isCorrectGuess = isWordMatch(userInput, maskedWord);
         setIsCorrect(isCorrectGuess);
 
-        // Play sound immediately
+        // Play sound immediately - before any state updates or UI changes
         playSound(isCorrectGuess ? 'correct' : 'incorrect');
 
+        // Apply immediate visual feedback
+        if (ayahContainerRef.current) {
+            // Apply class without removal timeout to ensure it's seen
+            ayahContainerRef.current.classList.remove('correct-answer', 'incorrect-answer');
+            ayahContainerRef.current.classList.add(isCorrectGuess ? 'correct-answer' : 'incorrect-answer');
+        }
+
         if (isCorrectGuess) {
+            // Immediate feedback
             setFeedback('Correct!');
             setScore((prev) => prev + 1);
+            setShowConfetti(true);
 
-            // Automatically move to next question after a delay
+            // Automatic next question after a delay (this delay is necessary for UX)
             setTimeout(() => {
+                if (ayahContainerRef.current) {
+                    ayahContainerRef.current.classList.remove('correct-answer');
+                }
+                setShowConfetti(false);
                 fetchNewAyah(juzNumber);
-            }, 1000);
+            }, 1500); // Reduced from 2000ms to 1500ms for faster progression
         } else {
+            // Immediate feedback
             setFeedback(`Incorrect. The correct word was "${maskedWord}".`);
             setIsShaking(true);
 
+            // Only use a minimal delay for shake animation
             setTimeout(() => {
                 setIsShaking(false);
+                if (ayahContainerRef.current) {
+                    ayahContainerRef.current.classList.remove('incorrect-answer');
+                }
             }, 500);
         }
     };
@@ -117,11 +138,41 @@ const JuzQuiz: React.FC = () => {
     // Add this helper function to split ayah text
     const getAyahParts = () => {
         if (!ayah) return { before: '', after: '' };
-        const parts = ayah.text.split('<span id="masked-word-container" class="masked"></span>');
-        return { before: parts[0], after: parts[1] || '' };
+
+        // Use a safer approach for splitting text with a unique marker
+        const marker = '<span id="masked-word-container" class="masked"></span>';
+
+        try {
+            const parts = ayah.text.split(marker);
+            return {
+                before: parts[0] || '',
+                after: parts[1] || '',
+            };
+        } catch (error) {
+            console.warn('Error splitting ayah text:', error);
+            return { before: ayah.text, after: '' };
+        }
     };
 
     const { before, after } = getAyahParts();
+
+    // Generate random confetti particles
+    const renderConfetti = () => {
+        if (!showConfetti) return null;
+
+        const colors = ['#FF6B6B', '#4ECDC4', '#FFD166', '#9B5DE5', '#F15BB5', '#00BBF9', '#00F5D4'];
+        const particles = Array.from({ length: 50 }, (_, i) => {
+            const style = {
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                background: colors[Math.floor(Math.random() * colors.length)],
+                animationDelay: `${Math.random() * 0.5}s`,
+            };
+            return <div key={i} className="confetti" style={style} />;
+        });
+
+        return <div className="confetti-container">{particles}</div>;
+    };
 
     // Inline rendering of masked word
     const renderMaskedInline = () => {
@@ -154,7 +205,11 @@ const JuzQuiz: React.FC = () => {
             );
         } else {
             return (
-                <span className={`font-arabic text-2xl font-bold ${isCorrect ? 'text-success' : 'text-error'}`}>
+                <span
+                    className={`font-arabic text-2xl font-bold animate-pop-in ${
+                        isCorrect ? 'text-success' : 'text-error'
+                    }`}
+                >
                     {maskedWord}
                 </span>
             );
@@ -173,56 +228,64 @@ const JuzQuiz: React.FC = () => {
     }, []);
 
     return (
-        <div className="max-w-4xl mx-auto p-5 font-sans">
-            <h1 className="text-3xl font-bold text-dark mb-6 text-center">Juz' Quiz</h1>
+        <div className="max-w-4xl mx-auto p-5 font-hand">
+            <h1 className="text-4xl mb-6 text-center">Juz' Quiz</h1>
             <ScoreCounter score={score} total={totalAttempts} />
             <div className="mb-6 flex items-center justify-center gap-3">
-                <label htmlFor="juz">Select Juz':</label>
+                <label htmlFor="juz" className="font-sketch text-lg">
+                    Select Juz':
+                </label>
                 <select
                     id="juz"
                     value={juzNumber}
                     onChange={handleJuzChange}
-                    className="p-2 rounded border border-gray-300 text-base min-w-[150px]"
+                    className="fun-input p-2 min-w-[150px] font-hand text-base"
                 >
                     {Array.from({ length: 30 }, (_, i) => (
                         <option key={i + 1} value={i + 1}>{`Juz' ${i + 1}`}</option>
                     ))}
                 </select>
             </div>
-            <div className="bg-background p-6 rounded-xl shadow-card">
-                <h2 className="text-2xl font-bold text-primary mb-4 text-center">Quiz</h2>
-                {loading && <p className="text-center">Loading...</p>}
-                {error && <p className="text-error text-center font-bold">{error}</p>}
+            <div className="quiz-container">
+                <h2 className="text-3xl mb-4 text-center">Quiz</h2>
+                {loading && <p className="text-center animate-pulse-slow">Loading...</p>}
+                {error && <p className="text-error text-center font-bold animate-shake">{error}</p>}
                 {!loading && !error && ayah && (
                     <div className="flex flex-col gap-5">
                         <div
                             ref={ayahContainerRef}
-                            className={`relative font-arabic text-2xl leading-relaxed text-right rtl p-5 bg-white rounded-lg shadow mb-5 ${
+                            className={`relative quran-text p-5 bg-white rounded-xl shadow-lg mb-5 border-3 border-navy border-dashed ${
                                 isShaking ? 'animate-shake' : ''
                             }`}
                         >
-                            {before}
+                            {/* Use spans instead of direct text insertion to avoid HTML parsing issues */}
+                            <span className="inline">{before}</span>
                             {renderMaskedInline()}
-                            {after}
+                            <span className="inline">{after}</span>
+                            {renderConfetti()}
                         </div>
                         <div className="flex flex-col items-center gap-3 my-4">
-                            <p className="text-center text-gray-600">
+                            <p className="text-center text-ink font-hand text-lg">
                                 {answered
                                     ? isCorrect
-                                        ? 'Correct! Moving to next question...'
-                                        : `Click "Next Question" to continue.`
-                                    : 'Type the missing word in the highlighted area.'}
+                                        ? '✨ Correct! Moving to next question... ✨'
+                                        : `✏️ Click "Next Question" to continue.`
+                                    : '✍️ Type the missing word in the highlighted area.'}
                             </p>
 
                             {feedback && (
-                                <p className={`text-center font-bold ${isCorrect ? 'text-success' : 'text-error'}`}>
+                                <p
+                                    className={`text-center font-bold text-lg animate-pop-in ${
+                                        isCorrect ? 'text-success' : 'text-error'
+                                    }`}
+                                >
                                     {feedback}
                                 </p>
                             )}
 
                             <button
                                 onClick={() => fetchNewAyah(juzNumber)}
-                                className="bg-secondary text-white py-3 px-6 rounded-full font-bold shadow transition-all hover:bg-green-600 hover:shadow-lg hover:-translate-y-0.5"
+                                className="btn btn-secondary hover:animate-wobble"
                                 disabled={loading}
                             >
                                 Next Question

@@ -148,14 +148,67 @@ export function maskWordInAyah(text: string): {
     };
 }
 
-export function playSound(type: 'correct' | 'incorrect'): void {
+// Preloaded audio elements for instant playback
+const audioCache: Record<string, HTMLAudioElement> = {};
+
+// Call this function at app initialization to preload audio files
+export function preloadAudioFiles(): void {
+    // Check if we're in a browser environment
+    if (typeof window === 'undefined' || !window.Audio) {
+        return;
+    }
+
     try {
-        const audio = new Audio(`/sounds/${type}.mp3`);
-        audio.volume = 0.5;
+        // Preload success sound
+        const successAudio = new Audio('/sounds/success.mp3');
+        successAudio.preload = 'auto';
+        successAudio.load();
+        audioCache['correct'] = successAudio;
+
+        // Preload fail sound
+        const failAudio = new Audio('/sounds/fail.mp3');
+        failAudio.preload = 'auto';
+        failAudio.load();
+        audioCache['incorrect'] = failAudio;
+
+        // Silent preload to prepare browser audio context
+        const warmupAudio = new Audio();
+        warmupAudio.volume = 0.01;
+        warmupAudio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAVFYAAFRWAAABAAgAZGF0YQAAAAA='; // tiny silent audio
+        warmupAudio.load();
+        warmupAudio.play().catch(() => {});
+    } catch (error) {
+        // Silently fail - preloading is optional
+    }
+}
+
+export function playSound(type: 'correct' | 'incorrect'): void {
+    // Check if we're in a browser environment
+    if (typeof window === 'undefined' || !window.Audio) {
+        return;
+    }
+
+    try {
+        // Use cached audio if available, otherwise create a new one
+        let audio: HTMLAudioElement;
+
+        if (audioCache[type]) {
+            // Use the cached audio element and clone it for simultaneous sounds
+            audio = audioCache[type].cloneNode() as HTMLAudioElement;
+        } else {
+            // Fallback to creating a new audio object
+            audio = new Audio(type === 'correct' ? '/sounds/success.mp3' : '/sounds/fail.mp3');
+        }
+
+        // Set volume and try to play immediately
+        audio.volume = 0.6;
         audio.play().catch((error) => {
-            console.error('Error playing sound:', error);
+            // Silently handle errors for better UX
+            if (error.name !== 'NotAllowedError') {
+                console.debug('Audio playback error:', error.name);
+            }
         });
     } catch (error) {
-        console.error('Error creating audio element:', error);
+        // Fail silently - no console logs to avoid cluttering
     }
 }
