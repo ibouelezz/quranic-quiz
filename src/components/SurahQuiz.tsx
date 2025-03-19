@@ -13,6 +13,7 @@ const SurahQuiz: React.FC = () => {
     const [maskedWordLength, setMaskedWordLength] = useState<number>(0);
     const [userInput, setUserInput] = useState<string>('');
     const [feedback, setFeedback] = useState<string>('');
+    const [motivationalMessage, setMotivationalMessage] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string>('');
     const [score, setScore] = useState<number>(0);
@@ -24,7 +25,26 @@ const SurahQuiz: React.FC = () => {
 
     // Refs
     const ayahContainerRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
     const navigate = useNavigate();
+
+    // Motivational messages for correct answers
+    const correctMessages = ['ما شاء الله!', 'أحسنت!', 'ممتاز!', 'بارك الله فيك!', 'رائع جداً!'];
+
+    // Encouraging messages for incorrect answers
+    const incorrectMessages = [
+        'حاول مرة أخرى!',
+        'لا تستسلم!',
+        'استمر في المحاولة!',
+        'أنت تتحسن!',
+        'ستنجح في المرة القادمة!',
+    ];
+
+    // Get a random motivational message
+    const getRandomMessage = (isCorrect: boolean) => {
+        const messages = isCorrect ? correctMessages : incorrectMessages;
+        return messages[Math.floor(Math.random() * messages.length)];
+    };
 
     // Load surahs on component mount
     useEffect(() => {
@@ -50,95 +70,105 @@ const SurahQuiz: React.FC = () => {
     // Auto-submit when input length matches masked word length
     useEffect(() => {
         if (userInput.length === maskedWordLength && !answered) {
-            // Small delay to allow the user to see what they typed
-            setTimeout(() => checkAnswer(), 200);
+            // Smaller delay for more immediate feedback
+            setTimeout(() => handleSubmit(), 100);
         }
     }, [userInput, maskedWordLength, answered]);
 
-    // Handle surah selection change
+    // Auto-focus on input when ayah changes
+    useEffect(() => {
+        if (inputRef.current && !answered && ayah) {
+            setTimeout(() => inputRef.current?.focus(), 100);
+        }
+    }, [ayah, answered]);
+
     const handleSurahChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
         const surahNumber = event.target.value;
         setSelectedSurah(surahNumber);
         await fetchNewAyah(surahNumber);
     };
 
-    // Fetch a new ayah for the quiz
     const fetchNewAyah = async (surahNumber: string) => {
-        if (!surahNumber) return;
-
         setLoading(true);
         setError('');
         setAnswered(false);
         setUserInput('');
         setIsCorrect(false);
         setIsShaking(false);
-        setFeedback('');
         setShowConfetti(false);
+        setFeedback('');
+        setMotivationalMessage('');
 
         try {
-            const surahData = await fetchSurah(surahNumber).then((data) => data[0]);
-            const surahAyahs = surahData.ayahs || [];
+            const surah = await fetchSurah(surahNumber).then((data) => data[0]);
+            const ayahs = surah.ayahs || [];
 
-            if (surahAyahs.length === 0) {
-                setError('No ayahs found in this surah');
+            if (ayahs.length < 2) {
+                setError('This surah has too few ayahs for a quiz.');
                 setAyah(null);
                 return;
             }
 
-            const randomIndex = Math.floor(Math.random() * surahData.numberOfAyahs);
-            const selectedAyah = surahAyahs[randomIndex];
-            const { maskedText, maskedWord, maskedWordLength } = maskWordInAyah(selectedAyah.text);
+            // Choose a random ayah, excluding very short ones
+            const filteredAyahs = ayahs.filter((a: any) => a.text.split(' ').length > 3);
+            const randomIndex = Math.floor(Math.random() * (filteredAyahs.length || 1));
+            const selectedAyah = filteredAyahs[randomIndex] || ayahs[1]; // Fallback to second ayah if filter results in empty
 
-            setAyah({ ...selectedAyah, text: maskedText });
+            const { maskedText, maskedWord, maskedWordLength } = maskWordInAyah(selectedAyah.text);
+            setAyah({ ...selectedAyah, text: maskedText, surahName: surah.name, surahNumber: surah.number });
             setMaskedWord(maskedWord);
             setMaskedWordLength(maskedWordLength);
         } catch (error) {
             console.error('Error fetching surah:', error);
-            setError('Failed to fetch ayahs. Please try again.');
+            setError('Failed to fetch ayah. Please try again.');
             setAyah(null);
         } finally {
             setLoading(false);
         }
     };
 
-    // Check the user's answer
-    const checkAnswer = () => {
-        if (answered || !userInput) return;
+    const handleSubmit = () => {
+        if (!userInput.trim() || answered) {
+            return;
+        }
 
-        // Immediately set answered state and check result
+        // Check correctness first
+        const isCorrectGuess = isWordMatch(userInput, maskedWord);
+
+        // Play sound immediately - before any state updates that might cause delays
+        playSound(isCorrectGuess ? 'correct' : 'incorrect');
+
+        // Now update state after sound is triggered
         setAnswered(true);
         setTotalAttempts((prev) => prev + 1);
-
-        const isCorrectGuess = isWordMatch(userInput, maskedWord);
         setIsCorrect(isCorrectGuess);
 
-        // Play sound immediately - before any state updates or UI changes
-        playSound(isCorrectGuess ? 'correct' : 'incorrect');
+        // Set a motivational message
+        setMotivationalMessage(getRandomMessage(isCorrectGuess));
 
         // Apply immediate visual feedback
         if (ayahContainerRef.current) {
-            // Apply class without removal timeout to ensure it's seen
             ayahContainerRef.current.classList.remove('correct-answer', 'incorrect-answer');
             ayahContainerRef.current.classList.add(isCorrectGuess ? 'correct-answer' : 'incorrect-answer');
         }
 
         if (isCorrectGuess) {
             // Immediate feedback
-            setFeedback('Correct!');
+            setFeedback(`صحيح! "${maskedWord}"`);
             setScore((prev) => prev + 1);
             setShowConfetti(true);
 
-            // Automatic next question after a delay (this delay is necessary for UX)
+            // Automatic next question after a short delay
             setTimeout(() => {
                 if (ayahContainerRef.current) {
                     ayahContainerRef.current.classList.remove('correct-answer');
                 }
                 setShowConfetti(false);
                 fetchNewAyah(selectedSurah);
-            }, 1500); // Reduced from 2000ms to 1500ms for faster progression
+            }, 1800); // Slightly longer delay to read the message
         } else {
-            // Immediate feedback
-            setFeedback(`Incorrect. The correct word was "${maskedWord}".`);
+            // Immediate feedback - show correct word
+            setFeedback(`الكلمة الصحيحة: "${maskedWord}"`);
             setIsShaking(true);
 
             // Only use a minimal delay for shake animation
@@ -151,20 +181,21 @@ const SurahQuiz: React.FC = () => {
         }
     };
 
-    // Handle key press events
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && !answered) {
-            checkAnswer();
+            handleSubmit();
         }
     };
 
-    // Add this helper function to split ayah text
+    const goToHome = () => {
+        navigate('/');
+    };
+
+    // Split ayah text for rendering
     const getAyahParts = () => {
         if (!ayah) return { before: '', after: '' };
 
-        // Use a safer approach for splitting text with a unique marker
         const marker = '<span id="masked-word-container" class="masked"></span>';
-
         try {
             const parts = ayah.text.split(marker);
             return {
@@ -183,13 +214,13 @@ const SurahQuiz: React.FC = () => {
     const renderConfetti = () => {
         if (!showConfetti) return null;
 
-        const colors = ['#FF6B6B', '#4ECDC4', '#FFD166', '#9B5DE5', '#F15BB5', '#00BBF9', '#00F5D4'];
+        const colors = ['#F9A826', '#39B9D2', '#7854F4', '#4CAF50', '#E53935'];
         const particles = Array.from({ length: 50 }, (_, i) => {
             const style = {
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
                 background: colors[Math.floor(Math.random() * colors.length)],
-                animationDelay: `${Math.random() * 0.5}s`,
+                animationDelay: `${Math.random() * 0.3}s`,
             };
             return <div key={i} className="confetti" style={style} />;
         });
@@ -200,8 +231,9 @@ const SurahQuiz: React.FC = () => {
     // Inline rendering of masked word
     const renderMaskedInline = () => {
         // Calculate exact width based on the masked word length
-        const inputStyle: React.CSSProperties = {
-            width: `${maskedWordLength}ch`,
+        const inputStyle = {
+            width: `${maskedWordLength * 1.2}ch`,
+            minWidth: '60px',
             direction: 'rtl' as 'rtl',
         };
 
@@ -209,27 +241,31 @@ const SurahQuiz: React.FC = () => {
             return (
                 <div className="inline-flex relative">
                     <input
+                        ref={inputRef}
                         type="text"
                         value={userInput}
                         onChange={(e) => setUserInput(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        className={`font-arabic text-2xl bg-transparent text-primary font-bold text-right outline-none ${
-                            !userInput && 'animate-blink'
-                        }`}
+                        className="font-arabic text-2xl md:text-3xl bg-transparent text-primary font-bold text-right outline-none"
                         style={inputStyle}
                         placeholder={''.padEnd(maskedWordLength, '_')}
                         maxLength={maskedWordLength}
                         autoComplete="off"
                         autoCapitalize="off"
                         spellCheck="false"
-                        autoFocus
                     />
+                    {userInput.length < maskedWordLength && (
+                        <span
+                            className="animate-blink absolute right-0 bottom-0 h-[1.2em] w-[2px] bg-primary"
+                            style={{ transform: `translateX(${userInput.length * 1.2}ch)` }}
+                        />
+                    )}
                 </div>
             );
         } else {
             return (
                 <span
-                    className={`font-arabic text-2xl font-bold animate-pop-in ${
+                    className={`font-arabic text-2xl md:text-3xl font-bold inline-block animate-pop-in ${
                         isCorrect ? 'text-success' : 'text-error'
                     }`}
                 >
@@ -239,50 +275,42 @@ const SurahQuiz: React.FC = () => {
         }
     };
 
-    // Scroll to ayah container when it changes
-    useEffect(() => {
-        if (ayahContainerRef.current && ayah) {
-            ayahContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-    }, [ayah]);
-
     return (
-        <div className="max-w-4xl mx-auto p-5 font-hand">
-            <h1 className="text-4xl mb-6 text-center">Surah Quiz</h1>
+        <div className="max-w-4xl mx-auto p-4 font-hand">
             <ScoreCounter score={score} total={totalAttempts} />
 
-            <div className="mb-6 flex items-center justify-center gap-3">
-                <label htmlFor="surah" className="font-sketch text-lg">
-                    Select Surah:
-                </label>
+            <div className="mb-5 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <select
-                    id="surah"
                     value={selectedSurah}
                     onChange={handleSurahChange}
-                    className="fun-input p-2 min-w-[150px] font-hand text-base"
+                    className="fun-input p-2 min-w-[200px] font-hand text-base"
                     disabled={loading}
                 >
                     {surahs.map((surah) => (
-                        <option key={`surah-${surah.number}`} value={surah.number}>
-                            {surah.name}
+                        <option key={surah.number} value={surah.number} className="ltr">
+                            {surah.number}. {surah.englishName} ({surah.name})
                         </option>
                     ))}
                 </select>
+
+                <button
+                    onClick={() => fetchNewAyah(selectedSurah)}
+                    className="btn btn-primary sm:ml-2 btn-arabic"
+                    disabled={loading}
+                >
+                    <span className="arabic">سؤال جديد</span>
+                </button>
             </div>
 
             <div className="quiz-container">
-                <h2 className="text-3xl mb-4 text-center">Quiz</h2>
-
-                {loading && <p className="text-center animate-pulse-slow">Loading...</p>}
+                {loading && <p className="text-center animate-pulse-slow py-12">Loading...</p>}
                 {error && <p className="text-error text-center font-bold animate-shake">{error}</p>}
 
                 {!loading && !error && ayah && (
                     <div className="flex flex-col gap-5">
                         <div
                             ref={ayahContainerRef}
-                            className={`relative quran-text p-5 bg-white rounded-xl shadow-lg mb-5 border-3 border-purple border-dashed ${
-                                isShaking ? 'animate-shake' : ''
-                            }`}
+                            className={`relative quran-text ${isShaking ? 'animate-shake' : ''}`}
                         >
                             <span className="inline">{before}</span>
                             {renderMaskedInline()}
@@ -290,32 +318,20 @@ const SurahQuiz: React.FC = () => {
                             {renderConfetti()}
                         </div>
 
-                        <div className="flex flex-col items-center gap-3 my-4">
-                            <p className="text-center text-ink font-hand text-lg">
-                                {answered
-                                    ? isCorrect
-                                        ? '✨ Correct! Moving to next question... ✨'
-                                        : `✏️ Click "Next Question" to continue.`
-                                    : '✍️ Type the missing word in the highlighted area.'}
-                            </p>
-
-                            {feedback && (
-                                <p
-                                    className={`text-center font-bold text-lg animate-pop-in ${
-                                        isCorrect ? 'text-success' : 'text-error'
-                                    }`}
-                                >
+                        {feedback && (
+                            <div className="feedback-message">
+                                <p className={isCorrect ? 'feedback-correct arabic' : 'feedback-incorrect arabic'}>
                                     {feedback}
                                 </p>
-                            )}
+                                {motivationalMessage && <p className="motivational-message">{motivationalMessage}</p>}
+                            </div>
+                        )}
 
-                            <button
-                                onClick={() => fetchNewAyah(selectedSurah)}
-                                className="btn btn-secondary hover:animate-wobble"
-                                disabled={loading}
-                            >
-                                Next Question
-                            </button>
+                        <div className="flex justify-between">
+                            <p className="text-xs opacity-60 font-hand ltr">Ayah {ayah.numberInSurah}</p>
+                            <p className="text-xs opacity-60 font-arabic rtl">
+                                سورة {ayah.surahName} ({ayah.surahNumber})
+                            </p>
                         </div>
                     </div>
                 )}

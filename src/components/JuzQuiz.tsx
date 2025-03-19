@@ -12,6 +12,7 @@ const JuzQuiz: React.FC = () => {
     const [maskedWordLength, setMaskedWordLength] = useState<number>(0);
     const [userInput, setUserInput] = useState<string>('');
     const [feedback, setFeedback] = useState<string>('');
+    const [motivationalMessage, setMotivationalMessage] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string>('');
     const [score, setScore] = useState<number>(0);
@@ -22,14 +23,40 @@ const JuzQuiz: React.FC = () => {
     const [showConfetti, setShowConfetti] = useState<boolean>(false);
     const navigate = useNavigate();
     const ayahContainerRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    // Motivational messages for correct answers
+    const correctMessages = ['ما شاء الله!', 'أحسنت!', 'ممتاز!', 'بارك الله فيك!', 'رائع جداً!'];
+
+    // Encouraging messages for incorrect answers
+    const incorrectMessages = [
+        'حاول مرة أخرى!',
+        'لا تستسلم!',
+        'استمر في المحاولة!',
+        'أنت تتحسن!',
+        'ستنجح في المرة القادمة!',
+    ];
+
+    // Get a random motivational message
+    const getRandomMessage = (isCorrect: boolean) => {
+        const messages = isCorrect ? correctMessages : incorrectMessages;
+        return messages[Math.floor(Math.random() * messages.length)];
+    };
 
     // Auto-submit when input length matches masked word length
     useEffect(() => {
         if (userInput.length === maskedWordLength && !answered) {
-            // Small delay to allow the user to see what they typed
-            setTimeout(() => handleSubmit(), 400);
+            // Smaller delay for more immediate feedback
+            setTimeout(() => handleSubmit(), 100);
         }
     }, [userInput, maskedWordLength, answered]);
+
+    // Auto-focus on input when ayah changes
+    useEffect(() => {
+        if (inputRef.current && !answered && ayah) {
+            setTimeout(() => inputRef.current?.focus(), 100);
+        }
+    }, [ayah, answered]);
 
     const handleJuzChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
         const selectedJuz = event.target.value;
@@ -79,15 +106,19 @@ const JuzQuiz: React.FC = () => {
             return;
         }
 
-        // Immediately set answered state and check result
+        // Check correctness first
+        const isCorrectGuess = isWordMatch(userInput, maskedWord);
+
+        // Play sound immediately - before any state updates that might cause delays
+        playSound(isCorrectGuess ? 'correct' : 'incorrect');
+
+        // Now update state after sound is triggered
         setAnswered(true);
         setTotalAttempts((prev) => prev + 1);
-
-        const isCorrectGuess = isWordMatch(userInput, maskedWord);
         setIsCorrect(isCorrectGuess);
 
-        // Play sound immediately - before any state updates or UI changes
-        playSound(isCorrectGuess ? 'correct' : 'incorrect');
+        // Set a motivational message
+        setMotivationalMessage(getRandomMessage(isCorrectGuess));
 
         // Apply immediate visual feedback
         if (ayahContainerRef.current) {
@@ -97,22 +128,22 @@ const JuzQuiz: React.FC = () => {
         }
 
         if (isCorrectGuess) {
-            // Immediate feedback
-            setFeedback('Correct!');
+            // Immediate feedback with word
+            setFeedback(`صحيح! "${maskedWord}"`);
             setScore((prev) => prev + 1);
             setShowConfetti(true);
 
-            // Automatic next question after a delay (this delay is necessary for UX)
+            // Automatic next question after a short delay
             setTimeout(() => {
                 if (ayahContainerRef.current) {
                     ayahContainerRef.current.classList.remove('correct-answer');
                 }
                 setShowConfetti(false);
                 fetchNewAyah(juzNumber);
-            }, 1500); // Reduced from 2000ms to 1500ms for faster progression
+            }, 1800); // Slightly longer delay to read the message
         } else {
             // Immediate feedback
-            setFeedback(`Incorrect. The correct word was "${maskedWord}".`);
+            setFeedback(`الكلمة الصحيحة: "${maskedWord}"`);
             setIsShaking(true);
 
             // Only use a minimal delay for shake animation
@@ -135,11 +166,10 @@ const JuzQuiz: React.FC = () => {
         navigate('/');
     };
 
-    // Add this helper function to split ayah text
+    // Split ayah text for rendering
     const getAyahParts = () => {
         if (!ayah) return { before: '', after: '' };
 
-        // Use a safer approach for splitting text with a unique marker
         const marker = '<span id="masked-word-container" class="masked"></span>';
 
         try {
@@ -160,13 +190,14 @@ const JuzQuiz: React.FC = () => {
     const renderConfetti = () => {
         if (!showConfetti) return null;
 
-        const colors = ['#FF6B6B', '#4ECDC4', '#FFD166', '#9B5DE5', '#F15BB5', '#00BBF9', '#00F5D4'];
+        const colors = ['#6366F1', '#8B5CF6', '#14B8A6', '#F59E0B', '#EF4444', '#10B981'];
         const particles = Array.from({ length: 50 }, (_, i) => {
             const style = {
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
                 background: colors[Math.floor(Math.random() * colors.length)],
-                animationDelay: `${Math.random() * 0.5}s`,
+                animationDelay: `${Math.random() * 0.3}s`,
+                transform: `rotate(${Math.random() * 180}deg)`,
             };
             return <div key={i} className="confetti" style={style} />;
         });
@@ -178,7 +209,7 @@ const JuzQuiz: React.FC = () => {
     const renderMaskedInline = () => {
         // Calculate exact width based on the masked word length
         const inputStyle: React.CSSProperties = {
-            width: `${maskedWordLength}ch`,
+            width: `${maskedWordLength * 1.2}ch`,
             direction: 'rtl' as 'rtl',
         };
 
@@ -186,27 +217,32 @@ const JuzQuiz: React.FC = () => {
             return (
                 <div className="inline-flex relative">
                     <input
+                        ref={inputRef}
                         type="text"
                         value={userInput}
                         onChange={(e) => setUserInput(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        className={`font-arabic text-2xl bg-transparent text-primary font-bold text-right outline-none ${
-                            !userInput && 'animate-blink'
-                        }`}
+                        className="font-arabic text-2xl md:text-3xl bg-transparent text-primary font-bold text-right outline-none"
                         style={inputStyle}
                         placeholder={''.padEnd(maskedWordLength, '_')}
                         maxLength={maskedWordLength}
                         autoComplete="off"
                         autoCapitalize="off"
                         spellCheck="false"
-                        autoFocus
                     />
+                    {/* Blinking caret with proper animation */}
+                    {userInput.length < maskedWordLength && (
+                        <span
+                            className="animate-blink absolute right-0 bottom-0 h-[1.2em] w-[2px] bg-primary"
+                            style={{ transform: `translateX(${userInput.length * 1.2}ch)` }}
+                        />
+                    )}
                 </div>
             );
         } else {
             return (
                 <span
-                    className={`font-arabic text-2xl font-bold animate-pop-in ${
+                    className={`font-arabic text-2xl md:text-3xl font-bold animate-pop-in ${
                         isCorrect ? 'text-success' : 'text-error'
                     }`}
                 >
@@ -228,13 +264,10 @@ const JuzQuiz: React.FC = () => {
     }, []);
 
     return (
-        <div className="max-w-4xl mx-auto p-5 font-hand">
-            <h1 className="text-4xl mb-6 text-center">Juz' Quiz</h1>
+        <div className="max-w-4xl mx-auto p-4 font-hand">
             <ScoreCounter score={score} total={totalAttempts} />
-            <div className="mb-6 flex items-center justify-center gap-3">
-                <label htmlFor="juz" className="font-sketch text-lg">
-                    Select Juz':
-                </label>
+
+            <div className="mb-5 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <select
                     id="juz"
                     value={juzNumber}
@@ -242,54 +275,49 @@ const JuzQuiz: React.FC = () => {
                     className="fun-input p-2 min-w-[150px] font-hand text-base"
                 >
                     {Array.from({ length: 30 }, (_, i) => (
-                        <option key={i + 1} value={i + 1}>{`Juz' ${i + 1}`}</option>
+                        <option key={i + 1} value={i + 1} className="font-arabic">{`جزء ${i + 1}`}</option>
                     ))}
                 </select>
+
+                <button
+                    onClick={() => fetchNewAyah(juzNumber)}
+                    className="btn btn-primary sm:ml-2 btn-arabic"
+                    disabled={loading}
+                >
+                    <span className="arabic">سؤال جديد</span>
+                </button>
             </div>
+
             <div className="quiz-container">
-                <h2 className="text-3xl mb-4 text-center">Quiz</h2>
-                {loading && <p className="text-center animate-pulse-slow">Loading...</p>}
+                {loading && <p className="text-center animate-pulse-slow py-12">Loading...</p>}
                 {error && <p className="text-error text-center font-bold animate-shake">{error}</p>}
+
                 {!loading && !error && ayah && (
                     <div className="flex flex-col gap-5">
                         <div
                             ref={ayahContainerRef}
-                            className={`relative quran-text p-5 bg-white rounded-xl shadow-lg mb-5 border-3 border-navy border-dashed ${
-                                isShaking ? 'animate-shake' : ''
-                            }`}
+                            className={`relative quran-text ${isShaking ? 'animate-shake' : ''}`}
                         >
-                            {/* Use spans instead of direct text insertion to avoid HTML parsing issues */}
                             <span className="inline">{before}</span>
                             {renderMaskedInline()}
                             <span className="inline">{after}</span>
                             {renderConfetti()}
                         </div>
-                        <div className="flex flex-col items-center gap-3 my-4">
-                            <p className="text-center text-ink font-hand text-lg">
-                                {answered
-                                    ? isCorrect
-                                        ? '✨ Correct! Moving to next question... ✨'
-                                        : `✏️ Click "Next Question" to continue.`
-                                    : '✍️ Type the missing word in the highlighted area.'}
-                            </p>
 
-                            {feedback && (
-                                <p
-                                    className={`text-center font-bold text-lg animate-pop-in ${
-                                        isCorrect ? 'text-success' : 'text-error'
-                                    }`}
-                                >
+                        {feedback && (
+                            <div className="feedback-message">
+                                <p className={isCorrect ? 'feedback-correct arabic' : 'feedback-incorrect arabic'}>
                                     {feedback}
                                 </p>
-                            )}
+                                {motivationalMessage && <p className="motivational-message">{motivationalMessage}</p>}
+                            </div>
+                        )}
 
-                            <button
-                                onClick={() => fetchNewAyah(juzNumber)}
-                                className="btn btn-secondary hover:animate-wobble"
-                                disabled={loading}
-                            >
-                                Next Question
-                            </button>
+                        <div className="flex justify-between">
+                            <p className="text-xs opacity-60 font-hand ltr">Ayah {ayah.numberInSurah}</p>
+                            <p className="text-xs opacity-60 font-arabic rtl">
+                                {ayah.surah?.englishName} ({ayah.surah?.number})
+                            </p>
                         </div>
                     </div>
                 )}

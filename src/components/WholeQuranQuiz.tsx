@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { fetchWholeQuran } from '../apiService';
 import { isSurahNameMatch, playSound } from '../utils/helpers';
-import { useNavigate } from 'react-router-dom';
 import ScoreCounter from './ScoreCounter';
 
 const WholeQuranQuiz: React.FC = () => {
@@ -9,6 +8,7 @@ const WholeQuranQuiz: React.FC = () => {
     const [ayah, setAyah] = useState<any>(null);
     const [userGuess, setUserGuess] = useState<string>('');
     const [feedback, setFeedback] = useState<string>('');
+    const [motivationalMessage, setMotivationalMessage] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string>('');
     const [score, setScore] = useState<number>(0);
@@ -19,7 +19,24 @@ const WholeQuranQuiz: React.FC = () => {
     const [showConfetti, setShowConfetti] = useState<boolean>(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const ayahContainerRef = useRef<HTMLDivElement>(null);
-    const navigate = useNavigate();
+
+    // Motivational messages for correct answers
+    const correctMessages = ['ما شاء الله!', 'أحسنت!', 'ممتاز!', 'بارك الله فيك!', 'رائع جداً!'];
+
+    // Encouraging messages for incorrect answers
+    const incorrectMessages = [
+        'حاول مرة أخرى!',
+        'لا تستسلم!',
+        'استمر في المحاولة!',
+        'أنت تتحسن!',
+        'ستنجح في المرة القادمة!',
+    ];
+
+    // Get a random motivational message
+    const getRandomMessage = (isCorrect: boolean) => {
+        const messages = isCorrect ? correctMessages : incorrectMessages;
+        return messages[Math.floor(Math.random() * messages.length)];
+    };
 
     const getRandomAyah = () => {
         const allAyahs = surahs.flatMap((surah) =>
@@ -63,7 +80,7 @@ const WholeQuranQuiz: React.FC = () => {
     // Auto-focus the input field when a new question is loaded
     useEffect(() => {
         if (ayah && !answered && inputRef.current) {
-            inputRef.current.focus();
+            setTimeout(() => inputRef.current?.focus(), 100);
         }
     }, [ayah, answered]);
 
@@ -90,10 +107,6 @@ const WholeQuranQuiz: React.FC = () => {
             return;
         }
 
-        // Immediately set answered state
-        setAnswered(true);
-        setTotalAttempts((prev) => prev + 1);
-
         if (ayah) {
             const possibleNames = [
                 ayah.surahName, // English name
@@ -106,11 +119,19 @@ const WholeQuranQuiz: React.FC = () => {
                 `${ayah.number}`, // Surah number as string
             ];
 
+            // Check correctness first
             const isCorrectGuess = isSurahNameMatch(userGuess, possibleNames);
+
+            // Play sound immediately - before any state updates that might cause delays
+            playSound(isCorrectGuess ? 'correct' : 'incorrect');
+
+            // Now update state after sound is triggered
+            setAnswered(true);
+            setTotalAttempts((prev) => prev + 1);
             setIsCorrect(isCorrectGuess);
 
-            // Play sound immediately - before any UI updates
-            playSound(isCorrectGuess ? 'correct' : 'incorrect');
+            // Set a motivational message
+            setMotivationalMessage(getRandomMessage(isCorrectGuess));
 
             // Immediate visual feedback
             if (ayahContainerRef.current) {
@@ -120,25 +141,25 @@ const WholeQuranQuiz: React.FC = () => {
             }
 
             if (isCorrectGuess) {
-                // Immediate feedback
-                setFeedback('Correct!');
+                // Immediate feedback with surah number
+                setFeedback(`صحيح! سورة ${ayah.name} (${ayah.number})`);
                 setScore((prev) => prev + 1);
                 setShowConfetti(true);
 
-                // Shorter delay for better UX
+                // Automatic next question after a short delay
                 setTimeout(() => {
                     if (ayahContainerRef.current) {
                         ayahContainerRef.current.classList.remove('correct-answer');
                     }
                     setShowConfetti(false);
                     handleNextQuestion();
-                }, 1500); // Reduced from 2000ms
+                }, 1800); // Slightly longer delay to read the message
             } else {
-                // Immediate feedback
-                setFeedback(`Incorrect. The correct answer is ${ayah.surahName} (${ayah.name}).`);
+                // Immediate feedback with surah number
+                setFeedback(`${ayah.surahName} (${ayah.name}) - سورة رقم ${ayah.number}`);
                 setIsShaking(true);
 
-                // Minimal delay for animation
+                // Only use a minimal delay for shake animation
                 setTimeout(() => {
                     setIsShaking(false);
                     if (ayahContainerRef.current) {
@@ -160,13 +181,14 @@ const WholeQuranQuiz: React.FC = () => {
     const renderConfetti = () => {
         if (!showConfetti) return null;
 
-        const colors = ['#FF6B6B', '#4ECDC4', '#FFD166', '#9B5DE5', '#F15BB5', '#00BBF9', '#00F5D4'];
+        const colors = ['#F9A826', '#39B9D2', '#7854F4', '#4CAF50', '#E53935'];
         const particles = Array.from({ length: 50 }, (_, i) => {
             const style = {
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
                 background: colors[Math.floor(Math.random() * colors.length)],
-                animationDelay: `${Math.random() * 0.5}s`,
+                animationDelay: `${Math.random() * 0.3}s`,
+                transform: `rotate(${Math.random() * 180}deg)`,
             };
             return <div key={i} className="confetti" style={style} />;
         });
@@ -174,67 +196,70 @@ const WholeQuranQuiz: React.FC = () => {
         return <div className="confetti-container">{particles}</div>;
     };
 
-    const goToHome = () => {
-        navigate('/');
-    };
-
     return (
-        <div className="max-w-4xl mx-auto p-5 font-hand">
-            <h1 className="text-4xl mb-6 text-center">Whole Quran Quiz</h1>
+        <div className="max-w-4xl mx-auto p-4 font-hand">
             <ScoreCounter score={score} total={totalAttempts} />
+
             <div className="quiz-container">
-                <h2 className="text-3xl mb-4 text-center">Quiz</h2>
-                {loading && <p className="text-center animate-pulse-slow">Loading...</p>}
+                {loading && <p className="text-center animate-pulse-slow py-12">Loading...</p>}
                 {error && <p className="text-error text-center font-bold animate-shake">{error}</p>}
+
                 {!loading && !error && ayah && (
                     <div className="flex flex-col gap-5">
                         <div
                             ref={ayahContainerRef}
-                            className={`relative quran-text p-5 bg-white rounded-xl shadow-lg mb-5 border-3 border-accent border-dashed ${
-                                isShaking ? 'animate-shake' : ''
-                            }`}
+                            className={`relative quran-text ${isShaking ? 'animate-shake' : ''}`}
                         >
                             <span className="inline">{ayah.text}</span>
                             {renderConfetti()}
                         </div>
+
                         <form onSubmit={handleGuessSubmit} className="animate-pop-in">
-                            <p className="text-center mb-4 font-sketch text-lg">What is the name of the surah?</p>
-                            <div className="flex flex-wrap gap-3 justify-center my-4 md:flex-row flex-col">
+                            <p className="text-center mb-3 font-arabic text-lg text-primary font-bold rtl">
+                                ما اسم السورة؟
+                            </p>
+                            <div className="flex flex-wrap gap-3 justify-center my-3 md:flex-row flex-col">
                                 <input
                                     ref={inputRef}
                                     type="text"
                                     value={userGuess}
                                     onChange={(e) => setUserGuess(e.target.value)}
                                     onKeyDown={handleKeyDown}
-                                    placeholder="Enter surah name"
+                                    placeholder="Enter surah name / أدخل اسم السورة"
                                     className="fun-input text-lg flex-grow max-w-xs md:max-w-full md:mb-0 mb-3"
                                     disabled={answered}
                                 />
-                                <button
-                                    type="submit"
-                                    className="btn btn-primary hover:animate-wobble"
-                                    disabled={answered}
-                                >
-                                    Submit
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleNextQuestion}
-                                    className="btn btn-secondary hover:animate-wobble"
-                                >
-                                    Next Question
-                                </button>
+
+                                <div className="flex gap-2">
+                                    <button type="submit" className="btn btn-primary btn-arabic" disabled={answered}>
+                                        <span className="arabic">إرسال</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleNextQuestion}
+                                        className="btn btn-secondary btn-arabic"
+                                    >
+                                        <span className="arabic">سؤال جديد</span>
+                                    </button>
+                                </div>
                             </div>
                         </form>
+
                         {feedback && (
-                            <p
-                                className={`text-center font-bold text-lg animate-pop-in ${
-                                    isCorrect ? 'text-success' : 'text-error'
-                                }`}
-                            >
-                                {feedback}
-                            </p>
+                            <div className="feedback-message">
+                                <p className={isCorrect ? 'feedback-correct arabic' : 'feedback-incorrect arabic'}>
+                                    {feedback}
+                                </p>
+                                {motivationalMessage && <p className="motivational-message">{motivationalMessage}</p>}
+                            </div>
                         )}
+
+                        <div className="flex justify-between">
+                            <p className="text-xs opacity-60 font-hand ltr">Ayah {ayah.numberInSurah}</p>
+                            <p className="text-xs opacity-60 font-arabic rtl">
+                                {ayah.number ? `سورة رقم ${ayah.number}` : ''}
+                            </p>
+                        </div>
                     </div>
                 )}
             </div>

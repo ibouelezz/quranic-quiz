@@ -148,67 +148,45 @@ export function maskWordInAyah(text: string): {
     };
 }
 
-// Preloaded audio elements for instant playback
-const audioCache: Record<string, HTMLAudioElement> = {};
+// Simple audio cache to avoid recreating audio objects
+const audioCache: { [key: string]: HTMLAudioElement } = {};
 
-// Call this function at app initialization to preload audio files
-export function preloadAudioFiles(): void {
-    // Check if we're in a browser environment
-    if (typeof window === 'undefined' || !window.Audio) {
-        return;
-    }
-
+/**
+ * Simple function to play a sound effect
+ */
+export function playSound(type: 'correct' | 'incorrect'): void {
     try {
-        // Preload success sound
-        const successAudio = new Audio('/sounds/success.mp3');
-        successAudio.preload = 'auto';
-        successAudio.load();
-        audioCache['correct'] = successAudio;
+        const soundPath = type === 'correct' ? '/sounds/success.mp3' : '/sounds/fail.mp3';
 
-        // Preload fail sound
-        const failAudio = new Audio('/sounds/fail.mp3');
-        failAudio.preload = 'auto';
-        failAudio.load();
-        audioCache['incorrect'] = failAudio;
+        // Use cached audio object or create a new one
+        if (!audioCache[soundPath]) {
+            audioCache[soundPath] = new Audio(soundPath);
+        }
 
-        // Silent preload to prepare browser audio context
-        const warmupAudio = new Audio();
-        warmupAudio.volume = 0.01;
-        warmupAudio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAVFYAAFRWAAABAAgAZGF0YQAAAAA='; // tiny silent audio
-        warmupAudio.load();
-        warmupAudio.play().catch(() => {});
+        const sound = audioCache[soundPath];
+
+        // Reset to beginning in case it was already playing
+        sound.currentTime = 0;
+        sound.volume = 0.6;
+
+        // Play sound and ignore any promise rejection
+        // This prevents unnecessary console errors
+        const playPromise = sound.play();
+        if (playPromise) {
+            playPromise.catch(() => {
+                // Silently fail - mobile browsers often block audio
+                // without user interaction, but we don't need to log errors
+            });
+        }
     } catch (error) {
-        // Silently fail - preloading is optional
+        // Silently fail if audio playback isn't supported
     }
 }
 
-export function playSound(type: 'correct' | 'incorrect'): void {
-    // Check if we're in a browser environment
-    if (typeof window === 'undefined' || !window.Audio) {
-        return;
-    }
-
-    try {
-        // Use cached audio if available, otherwise create a new one
-        let audio: HTMLAudioElement;
-
-        if (audioCache[type]) {
-            // Use the cached audio element and clone it for simultaneous sounds
-            audio = audioCache[type].cloneNode() as HTMLAudioElement;
-        } else {
-            // Fallback to creating a new audio object
-            audio = new Audio(type === 'correct' ? '/sounds/success.mp3' : '/sounds/fail.mp3');
-        }
-
-        // Set volume and try to play immediately
-        audio.volume = 0.6;
-        audio.play().catch((error) => {
-            // Silently handle errors for better UX
-            if (error.name !== 'NotAllowedError') {
-                console.debug('Audio playback error:', error.name);
-            }
-        });
-    } catch (error) {
-        // Fail silently - no console logs to avoid cluttering
-    }
+// Remove the preloading function since we handle caching in playSound
+export function preloadAudioFiles(): void {
+    // Create empty cache entries - actual Audio objects
+    // will be created on first playSound call
+    audioCache['/sounds/success.mp3'] = new Audio('/sounds/success.mp3');
+    audioCache['/sounds/fail.mp3'] = new Audio('/sounds/fail.mp3');
 }

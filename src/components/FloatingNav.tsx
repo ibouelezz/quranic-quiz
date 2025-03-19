@@ -22,60 +22,50 @@ const FloatingNav: React.FC = () => {
     }
 
     return (
-        <div className="fixed bottom-8 right-8 z-50">
+        <div className="fixed bottom-6 right-6 z-50">
             <div
-                className={`absolute bottom-[70px] right-0 flex flex-col gap-3 transition-all ${
-                    isOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-5'
+                className={`absolute bottom-[70px] right-0 flex flex-col gap-4 transition-all duration-300 ${
+                    isOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-10'
                 }`}
             >
                 <div
-                    className="w-12 h-12 rounded-full bg-white text-primary flex items-center justify-center text-xl shadow cursor-pointer transition-all hover:scale-110 hover:shadow-lg relative"
+                    className="w-12 h-12 rounded-full bg-white shadow-md text-primary flex items-center justify-center text-xl cursor-pointer transition-transform hover:scale-110"
                     onClick={() => navigateTo('/')}
                 >
                     <span>🏠</span>
-                    <div className="absolute right-[60px] bg-gray-800 text-white py-1 px-3 rounded text-sm whitespace-nowrap opacity-0 invisible transition-all group-hover:opacity-100 group-hover:visible">
-                        Home
-                    </div>
                 </div>
                 {currentPath !== '/quiz/surah' && (
                     <div
-                        className="w-12 h-12 rounded-full bg-white text-primary flex items-center justify-center text-xl shadow cursor-pointer transition-all hover:scale-110 hover:shadow-lg relative group"
+                        className="w-12 h-12 rounded-full bg-white shadow-md text-primary flex items-center justify-center text-xl cursor-pointer transition-transform hover:scale-110"
                         onClick={() => navigateTo('/quiz/surah')}
                     >
                         <span>📖</span>
-                        <div className="absolute right-[60px] bg-gray-800 text-white py-1 px-3 rounded text-sm whitespace-nowrap opacity-0 invisible transition-all group-hover:opacity-100 group-hover:visible">
-                            Surah Quiz
-                        </div>
                     </div>
                 )}
                 {currentPath !== '/quiz/juz' && (
                     <div
-                        className="w-12 h-12 rounded-full bg-white text-primary flex items-center justify-center text-xl shadow cursor-pointer transition-all hover:scale-110 hover:shadow-lg relative group"
+                        className="w-12 h-12 rounded-full bg-white shadow-md text-primary flex items-center justify-center text-xl cursor-pointer transition-transform hover:scale-110"
                         onClick={() => navigateTo('/quiz/juz')}
                     >
                         <span>📚</span>
-                        <div className="absolute right-[60px] bg-gray-800 text-white py-1 px-3 rounded text-sm whitespace-nowrap opacity-0 invisible transition-all group-hover:opacity-100 group-hover:visible">
-                            Juz Quiz
-                        </div>
                     </div>
                 )}
                 {currentPath !== '/quiz/whole' && (
                     <div
-                        className="w-12 h-12 rounded-full bg-white text-primary flex items-center justify-center text-xl shadow cursor-pointer transition-all hover:scale-110 hover:shadow-lg relative group"
+                        className="w-12 h-12 rounded-full bg-white shadow-md text-primary flex items-center justify-center text-xl cursor-pointer transition-transform hover:scale-110"
                         onClick={() => navigateTo('/quiz/whole')}
                     >
                         <span>🕋</span>
-                        <div className="absolute right-[60px] bg-gray-800 text-white py-1 px-3 rounded text-sm whitespace-nowrap opacity-0 invisible transition-all group-hover:opacity-100 group-hover:visible">
-                            Whole Quran
-                        </div>
                     </div>
                 )}
             </div>
             <div
-                className="w-16 h-16 rounded-full bg-primary text-white flex items-center justify-center text-2xl shadow-lg cursor-pointer transition-all hover:scale-110 hover:shadow-xl"
+                className={`w-14 h-14 rounded-full font-hand text-white flex items-center justify-center text-2xl cursor-pointer transform shadow-md transition-all duration-300 ${
+                    isOpen ? 'bg-error rotate-45 scale-110' : 'bg-primary hover:scale-105'
+                }`}
                 onClick={toggleMenu}
             >
-                {isOpen ? '✕' : '≡'}
+                {isOpen ? '+' : '≡'}
             </div>
         </div>
     );
